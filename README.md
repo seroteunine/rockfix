@@ -4,7 +4,17 @@ A simple tool to fix incompatibility issues on RockBox.
 
 ## Quick Start
 
-### Using Docker
+### Using Docker (Recommended)
+
+**Option 1: Use pre-built image from Docker Hub (easiest)**
+
+```bash
+docker run -it -v /path/to/music:/music seroteunin/rockfix:latest
+```
+
+This pulls and runs the latest version automatically—no building required!
+
+**Option 2: Build locally**
 
 ```bash
 docker build -t rockfix .
