@@ -28,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: docker.io/seroteunin/rockfix
+          images: docker.io/${{ secrets.DOCKER_USERNAME }}/rockfix
           tags: |
             type=raw,value=latest
 
@@ -45,6 +45,6 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest@v1
         with:
-          subject-name: docker.io/seroteunin/rockfix
+          subject-name: docker.io/${{ secrets.DOCKER_USERNAME }}/rockfix
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
