@@ -1,6 +1,6 @@
 # RockBox compatibility tool
 
-A simple tool to prepare music for RockBox devices and fix incompatibility issues.
+A simple tool to fix incompatibility issues on RockBox.
 
 ## Quick Start
 
