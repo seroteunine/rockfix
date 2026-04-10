@@ -2,13 +2,15 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /workspace
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy everything into the rockfix subdirectory
+RUN mkdir -p rockfix
+COPY requirements.txt rockfix/
+COPY . rockfix/rockfix/
 
-COPY . .
+RUN pip install --no-cache-dir -r rockfix/requirements.txt
 
-ENV PYTHONPATH=/app:$PYTHONPATH
+WORKDIR /workspace/rockfix
 
 ENTRYPOINT ["python3", "-m", "rockfix"]
