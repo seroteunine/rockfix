@@ -4,13 +4,8 @@ A simple tool to prepare music for RockBox devices.
 
 ## Quick Start
 
-### Using Docker (Recommended)
+### Using Docker
 
-```bash
-docker-compose run --rm rockfix
-```
-
-Or manually:
 ```bash
 docker build -t rockfix .
 docker run -it -v /path/to/music:/music rockfix
