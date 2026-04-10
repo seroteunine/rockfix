@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  rockfix:
+    build: .
+    container_name: rockfix
+    volumes:
+      - ${MUSIC_DIR:-.}:/music
+    working_dir: /music
+    stdin_open: true
+    tty: true
