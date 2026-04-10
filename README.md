@@ -1,6 +1,6 @@
-# RockBox Music Converter
+# RockBox compatibility tool
 
-A simple tool to prepare music for RockBox devices.
+A simple tool to prepare music for RockBox devices and fix incompatibility issues.
 
 ## Quick Start
 
