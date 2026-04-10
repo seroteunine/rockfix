@@ -3,15 +3,6 @@
 import os
 
 
-def get_directory() -> str:
-    """Return the music directory from Docker volume mount.
-    
-    Returns:
-        str: The music directory path
-    """
-    return "/music"
-
-
 def get_conversion_options() -> dict:
     """Prompt for conversion options with default.
     
