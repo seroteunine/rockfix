@@ -1,7 +1,7 @@
 """Entry point for RockBox Music Converter."""
 
-from ...rockfix import cli
-from ...rockfix import processor
+from . import cli
+from . import processor
 
 
 def main():

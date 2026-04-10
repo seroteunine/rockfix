@@ -2,8 +2,8 @@
 
 import os
 
-from ...rockfix import audio
-from ...rockfix import artwork
+from . import audio
+from . import artwork
 
 
 SKIP_PATTERNS = ('._',)  # macOS resource fork files
