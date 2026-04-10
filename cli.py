@@ -4,29 +4,12 @@ import os
 
 
 def get_directory() -> str:
-    """Prompt for root directory with default.
+    """Return the music directory from Docker volume mount.
     
     Returns:
-        str: The selected directory path
+        str: The music directory path
     """
-    default_dir = "/Volumes/IPOD/Music"
-    print("\n" + "─" * 50)
-    print("📁 MUSIC LIBRARY LOCATION")
-    print("─" * 50)
-    print(f"Enter the folder containing your music files")
-    print(f"(Default: {default_dir})")
-    print("Just press ENTER to use the default")
-    print(f"\nFolder path [or press ENTER]: ", end="", flush=True)
-    user_input = input().strip()
-    
-    if not user_input:
-        return default_dir
-    
-    if os.path.isdir(user_input):
-        return user_input
-    else:
-        print(f"Error: Directory '{user_input}' not found. Using default.")
-        return default_dir
+    return "/music"
 
 
 def get_conversion_options() -> dict:
