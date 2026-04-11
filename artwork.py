@@ -16,21 +16,8 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC
 
 
-KNOWN_FILENAMES = {
-    'cover.jpg', 'cover.jpeg', 'cover.png',
-    'folder.jpg', 'folder.jpeg', 'folder.png',
-    'albumart.jpg', 'albumart.jpeg', 'albumart.png',
-    'front.jpg', 'front.jpeg', 'front.png',
-    'artwork.jpg', 'artwork.jpeg', 'artwork.png',
-    'art.jpg', 'art.jpeg', 'art.png',
-    'album.jpg', 'album.jpeg', 'album.png',
-    'back.jpg', 'back.jpeg', 'back.png',
-    'disc.jpg', 'disc.jpeg', 'disc.png',
-    'thumb.jpg', 'thumb.jpeg', 'thumb.png',
-}
-
 # Filenames Rockbox will actually find and display.
-_ROCKBOX_COVER_NAMES = {'cover.jpg', 'cover.jpeg', 'cover.bmp', 'folder.jpg', 'folder.jpeg'}
+KNOWN_FILENAMES = {'cover.jpg', 'cover.jpeg', 'cover.png', 'folder.jpg', 'folder.jpeg', 'folder.png'}
 
 MAX_SIZE = 300
 
@@ -96,7 +83,7 @@ def process_embedded_flac(file_path: str):
     Rockbox can find it. Skips if any recognised cover file already exists.
     """
     directory = os.path.dirname(file_path)
-    if any(os.path.exists(os.path.join(directory, n)) for n in _ROCKBOX_COVER_NAMES):
+    if any(os.path.exists(os.path.join(directory, n)) for n in KNOWN_FILENAMES):
         return
     try:
         f = FLAC(file_path)
