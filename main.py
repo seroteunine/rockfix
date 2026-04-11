@@ -6,7 +6,6 @@ import signal
 import sys
 import tempfile
 
-from . import __version__
 from . import audio
 from . import artwork
 from . import tags
@@ -89,7 +88,6 @@ def _process(root_dir: str):
     signal.signal(signal.SIGTERM, _handle_interrupt)
 
     try:
-        print(f"rockfix {__version__}")
         print(f"\nFolder:  {root_dir}")
         print(f"Staging: {_staging.tmp}")
         print("─" * 50)

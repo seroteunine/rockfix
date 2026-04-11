@@ -32,10 +32,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Extract version
-        id: version
-        run: echo "version=$(python3 -c "exec(open('__init__.py').read()); print(__version__)")" >> $GITHUB_OUTPUT
-
       - name: Set up QEMU (multi-platform)
         uses: docker/setup-qemu-action@v3
 
@@ -66,6 +62,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
