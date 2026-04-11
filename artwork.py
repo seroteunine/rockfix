@@ -36,24 +36,30 @@ def process(file_path: str):
             if w <= MAX_SIZE and h <= MAX_SIZE:
                 return
             print(f"  Resizing {os.path.basename(file_path)} ({w}x{h} → {MAX_SIZE}x{MAX_SIZE})...")
-            out = img.convert("RGB")
+            fmt = img.format or "JPEG"
+            out = img.convert("RGB") if fmt == "JPEG" else img.copy()
             out.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
-            out.save(file_path, "JPEG", quality=85)
+            save_kwargs = {"quality": 85} if fmt == "JPEG" else {}
+            out.save(file_path, fmt, **save_kwargs)
     except Exception as e:
         print(f"  Error processing {os.path.basename(file_path)}: {e}")
 
 
-def _resize_bytes(data: bytes) -> bytes | None:
-    """Resize image bytes to fit MAX_SIZE. Returns resized bytes or None if already fits."""
+def _resize_bytes(data: bytes) -> tuple[bytes, str] | None:
+    """Resize image bytes to fit MAX_SIZE. Returns (resized bytes, mime type) or None if already fits."""
     img = Image.open(io.BytesIO(data))
     w, h = img.size
     if w <= MAX_SIZE and h <= MAX_SIZE:
         return None
-    img = img.convert("RGB")
+    fmt = img.format or "JPEG"
+    if fmt == "JPEG":
+        img = img.convert("RGB")
     img.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
     buf = io.BytesIO()
-    img.save(buf, "JPEG", quality=85)
-    return buf.getvalue()
+    save_kwargs = {"quality": 85} if fmt == "JPEG" else {}
+    img.save(buf, fmt, **save_kwargs)
+    mime = "image/jpeg" if fmt == "JPEG" else f"image/{fmt.lower()}"
+    return buf.getvalue(), mime
 
 
 def process_embedded_flac(file_path: str):
@@ -68,8 +74,7 @@ def process_embedded_flac(file_path: str):
             resized = _resize_bytes(pic.data)
             if resized:
                 print(f"  Resizing embedded art in {os.path.basename(file_path)}...")
-                pic.data = resized
-                pic.mime = "image/jpeg"
+                pic.data, pic.mime = resized
                 changed = True
             pictures.append(pic)
         if changed:
@@ -92,8 +97,7 @@ def process_embedded_mp3(file_path: str):
             resized = _resize_bytes(apic.data)
             if resized:
                 print(f"  Resizing embedded art in {os.path.basename(file_path)}...")
-                apic.data = resized
-                apic.mime = "image/jpeg"
+                apic.data, apic.mime = resized
                 changed = True
         if changed:
             f.tags.save(file_path)
