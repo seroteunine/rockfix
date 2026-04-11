@@ -68,6 +68,8 @@ def _process(root_dir: str, conversions: dict):
                 if conversions['art']:
                     artwork.process_embedded_flac(path)
             elif f.lower().endswith('.mp3'):
+                if conversions['tags']:
+                    tags.fix_mp3_id3_version(path)
                 if conversions['art']:
                     artwork.process_embedded_mp3(path)
             elif conversions['art'] and artwork.is_artwork(f):

@@ -58,6 +58,21 @@ def _set_albumartist(f, path: str, value: str):
         f.tags.save(path)
 
 
+def fix_mp3_id3_version(path: str):
+    """Convert MP3 ID3 tags to v2.3 for Rockbox compatibility.
+
+    Rockbox has known parser bugs with certain ID3v2.4 features that cause
+    tags to show as unknown in the database. ID3v2.3 is the safe target.
+    """
+    try:
+        f = ID3(path)
+        f.update_to_v23()
+        f.save(path, v2_version=3)
+        print(f"  ID3v2.3  {os.path.basename(path)}")
+    except Exception as e:
+        print(f"  Error converting ID3 version for {os.path.basename(path)}: {e}")
+
+
 def fix_album_artist(audio_files: list[str]):
     """Set a consistent ALBUMARTIST on every track in an album directory.
 
