@@ -45,6 +45,16 @@ class _Staging:
         self._staged.append(real_path)
         return staged
 
+    def stage_for_write(self, real_path: str) -> str:
+        """Stage a file on demand (copy-on-write). Idempotent — safe to call
+        multiple times for the same path; copies only on the first call."""
+        staged = self.tmp_path(real_path)
+        if not os.path.exists(staged):
+            os.makedirs(os.path.dirname(staged), exist_ok=True)
+            shutil.copy2(real_path, staged)
+            self._staged.append(real_path)
+        return staged
+
     def apply(self, changed: set[str]):
         """Copy only changed staged files back to the source.
 
@@ -91,14 +101,13 @@ def _process(root_dir: str):
         for root, _, files in os.walk(root_dir):
             clean = [f for f in files if not any(f.startswith(p) for p in SKIP_PREFIXES)]
 
-            # Copy all audio files and existing cover art into the staging area.
-            # Processing functions then operate on staged copies, never touching
-            # the real volume. Existing covers are staged so that
-            # process_embedded_flac correctly detects them in the staged directory.
-            flacs = [_staging.stage(os.path.join(root, f))
-                     for f in clean if f.lower().endswith('.flac')]
-            mp3s  = [_staging.stage(os.path.join(root, f))
-                     for f in clean if f.lower().endswith('.mp3')]
+            # Collect real (original) paths for audio files. These are not copied
+            # upfront — staging happens on demand only for files that actually
+            # need modification (copy-on-write). Cover art files are small so
+            # they are still staged upfront so process_embedded_flac can detect
+            # them in the staging directory.
+            flacs = [os.path.join(root, f) for f in clean if f.lower().endswith('.flac')]
+            mp3s  = [os.path.join(root, f) for f in clean if f.lower().endswith('.mp3')]
             for f in clean:
                 if artwork.is_artwork(f):
                     _staging.stage(os.path.join(root, f))
@@ -106,25 +115,40 @@ def _process(root_dir: str):
             if not (flacs or mp3s or any(artwork.is_artwork(f) for f in clean)):
                 continue
 
+            # Staging dir for this album — used as the output directory for new
+            # files (e.g. extracted cover art). May not exist yet if no artwork
+            # was staged above; process_embedded_flac creates it when needed.
+            staged_dir = _staging.tmp_path(root)
+
             album_changed: set[str] = set()
             album_scanned = 0
 
             if flacs or mp3s:
-                album_changed.update(tags.fix_album_artist(flacs + mp3s))
+                album_changed.update(tags.fix_album_artist(flacs + mp3s, _staging.stage_for_write))
 
             for f in clean:
-                staged = _staging.tmp_path(os.path.join(root, f))
+                real = os.path.join(root, f)
                 if f.lower().endswith('.flac'):
                     album_scanned += 1
-                    if audio.process(staged):                album_changed.add(staged)
-                    if artwork.process_embedded_flac(staged): album_changed.add(staged)
+                    staged = audio.process(real, _staging.stage_for_write)
+                    if staged: album_changed.add(staged)
+                    staged = artwork.process_embedded_flac(real, staged_dir)
+                    if staged: album_changed.add(staged)
                 elif f.lower().endswith('.mp3'):
                     album_scanned += 1
-                    if tags.fix_mp3_id3_version(staged):     album_changed.add(staged)
-                    if artwork.process_embedded_mp3(staged):  album_changed.add(staged)
+                    staged = tags.fix_mp3_id3_version(real, _staging.stage_for_write)
+                    if staged: album_changed.add(staged)
+                    staged = artwork.process_embedded_mp3(real, _staging.stage_for_write)
+                    if staged: album_changed.add(staged)
                 elif artwork.is_artwork(f):
                     album_scanned += 1
-                    if artwork.process(staged):              album_changed.add(staged)
+                    staged = _staging.tmp_path(real)
+                    if artwork.process(staged):
+                        album_changed.add(staged)
+                        # If a PNG was converted to JPEG, track the new JPEG too.
+                        jpg_staged = os.path.splitext(staged)[0] + ".jpg"
+                        if jpg_staged != staged and os.path.exists(jpg_staged):
+                            album_changed.add(jpg_staged)
 
             n_album_changed = len(album_changed)
             status = f"{n_album_changed} modified" if n_album_changed else "OK"
@@ -138,6 +162,7 @@ def _process(root_dir: str):
         print("\n" + "─" * 50)
         print("Applying changes to device...")
         _staging.apply(changed)
+        os.sync()   # flush all writes before Docker releases the volume mount
         print(f"{n_changed} modified, {n_ok} already OK.")
 
     finally:
@@ -147,7 +172,9 @@ def _process(root_dir: str):
 
 def main():
     _process(DEFAULT_MUSIC_DIR)
-    print("\nDone. Your files are ready for your device.\n")
+    print("\nDone. Your files are ready for your device.")
+    print("You can now eject your device.")
+    print("If macOS says the disk is in use, run:  diskutil unmount force /Volumes/<device>\n")
 
 
 if __name__ == "__main__":

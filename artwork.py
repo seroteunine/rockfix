@@ -81,54 +81,76 @@ def process(file_path: str) -> bool:
         return False
 
 
-def process_embedded_flac(file_path: str) -> bool:
-    """Extract embedded art from a FLAC file to cover.jpg in the same directory.
+def process_embedded_flac(real_path: str, staged_dir: str) -> str | None:
+    """Extract embedded art from a FLAC file to cover.jpg in staged_dir.
 
     Rockbox does not read embedded FLAC (Vorbis comment) art — it only displays
     external image files. This extracts the embedded picture to cover.jpg so
-    Rockbox can find it. Skips if any recognised cover file already exists.
+    Rockbox can find it. Skips if any recognised cover file already exists in
+    either the real album directory or the staging directory.
+
+    Reads from the original FLAC path (no staging needed — the FLAC is not
+    modified). Writes cover.jpg directly to staged_dir.
+    Returns the staged cover.jpg path if created, else None.
     """
-    directory = os.path.dirname(file_path)
-    if any(os.path.exists(os.path.join(directory, n)) for n in KNOWN_FILENAMES):
-        return False
+    real_dir = os.path.dirname(real_path)
+    for n in KNOWN_FILENAMES:
+        if (os.path.exists(os.path.join(real_dir, n)) or
+                os.path.exists(os.path.join(staged_dir, n))):
+            return None
     try:
-        f = FLAC(file_path)
+        f = FLAC(real_path)
         if not f.pictures:
-            return False
-        cover_path = os.path.join(directory, "cover.jpg")
+            return None
+        os.makedirs(staged_dir, exist_ok=True)
+        cover_path = os.path.join(staged_dir, "cover.jpg")
         jpg_data = _to_baseline_jpeg(f.pictures[0].data)
         with open(cover_path, "wb") as out:
             out.write(jpg_data)
-        print(f"  Extracted embedded art → cover.jpg  ({os.path.basename(file_path)})")
-        return True
+        print(f"  Extracted embedded art → cover.jpg  ({os.path.basename(real_path)})")
+        return cover_path
     except Exception as e:
-        print(f"  Error extracting embedded art from {os.path.basename(file_path)}: {e}")
-        return False
+        print(f"  Error extracting embedded art from {os.path.basename(real_path)}: {e}")
+        return None
 
 
-def process_embedded_mp3(file_path: str) -> bool:
+def process_embedded_mp3(real_path: str, stage_fn) -> str | None:
     """Resize embedded artwork in an MP3 file.
 
     Rockbox reads embedded JPEG art from ID3v2 tags. Oversized images are
     resized and re-encoded as baseline JPEG.
+
+    Reads from the original path; stages and modifies only if oversized art
+    is found. Returns the staged path if the file was modified, else None.
     """
     try:
-        f = MP3(file_path, ID3=ID3)
+        f = MP3(real_path, ID3=ID3)
         if not f.tags:
-            return False
+            return None
+        apics = f.tags.getall("APIC")
+        if not apics:
+            return None
+        # Check from original whether any resize is needed before staging.
+        if not any(
+            max(Image.open(io.BytesIO(apic.data)).size) > MAX_SIZE
+            for apic in apics
+        ):
+            return None
+        staged = stage_fn(real_path)
+        f2 = MP3(staged, ID3=ID3)
         changed = False
-        for apic in f.tags.getall("APIC"):
+        for apic in f2.tags.getall("APIC"):
             img = Image.open(io.BytesIO(apic.data))
             w, h = img.size
             if w <= MAX_SIZE and h <= MAX_SIZE:
                 continue
-            print(f"  Resizing embedded art in {os.path.basename(file_path)}...")
+            print(f"  Resizing embedded art in {os.path.basename(real_path)}...")
             apic.data = _to_baseline_jpeg(apic.data)
             apic.mime = "image/jpeg"
             changed = True
         if changed:
-            f.tags.save(file_path)
-        return changed
+            f2.tags.save(staged)
+        return staged if changed else None
     except Exception as e:
-        print(f"  Error processing embedded art in {os.path.basename(file_path)}: {e}")
-        return False
+        print(f"  Error processing embedded art in {os.path.basename(real_path)}: {e}")
+        return None
