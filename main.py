@@ -61,8 +61,11 @@ def _process(root_dir: str, conversions: dict):
 
         for f in clean:
             path = os.path.join(root, f)
-            if conversions['music'] and f.lower().endswith('.flac'):
-                audio.process(path)
+            if f.lower().endswith('.flac'):
+                if conversions['music']:
+                    audio.process(path)
+                if conversions['art']:
+                    artwork.process_embedded_flac(path)
             elif conversions['art'] and artwork.is_artwork(f):
                 artwork.process(path)
 
