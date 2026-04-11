@@ -5,7 +5,8 @@ Rockbox constraints:
   - Does NOT read embedded art from FLAC (Vorbis comments) — external file required.
   - Does read embedded JPEG art from MP3 (ID3v2).
   - Progressive JPEGs are not supported; output must be baseline JPEG.
-  - Recommended max size: 300x300 (theme-dependent, but safe default).
+  - Recommended max size: 200x200 (theme-dependent, but 200x200 is the
+    practical standard — most devices have screens smaller than this).
 """
 
 import io
@@ -19,7 +20,7 @@ from mutagen.id3 import ID3, APIC
 # Filenames Rockbox will actually find and display.
 KNOWN_FILENAMES = {'cover.jpg', 'cover.jpeg', 'cover.png', 'folder.jpg', 'folder.jpeg', 'folder.png'}
 
-MAX_SIZE = 300
+MAX_SIZE = 200
 
 
 def is_artwork(filename: str) -> bool:
