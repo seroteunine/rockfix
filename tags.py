@@ -73,11 +73,15 @@ def fix_mp3_id3_version(path: str):
         print(f"  Error converting ID3 version for {os.path.basename(path)}: {e}")
 
 
+VARIOUS_ARTISTS = "Various Artists"
+
+
 def fix_album_artist(audio_files: list[str]):
     """Set a consistent ALBUMARTIST on every track in an album directory.
 
-    Finds the artist that appears across the most tracks and writes it to
-    all tracks, so Rockbox groups the album under a single artist entry.
+    If a single artist appears on more than 50% of the tracks, that artist
+    is used as ALBUMARTIST. Otherwise the directory is treated as a
+    compilation and ALBUMARTIST is set to "Various Artists".
     Supports both FLAC (Vorbis comments) and MP3 (ID3) files.
     """
     loaded = []
@@ -97,7 +101,11 @@ def fix_album_artist(audio_files: list[str]):
     if not tally:
         return
 
-    album_artist = tally.most_common(1)[0][0]
+    top_artist, top_count = tally.most_common(1)[0]
+    if top_count / len(loaded) >= 0.5:
+        album_artist = top_artist
+    else:
+        album_artist = VARIOUS_ARTISTS
 
     for path, f in loaded:
         if _get_albumartist(f) != album_artist:
