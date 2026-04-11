@@ -22,7 +22,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Import check
-        run: PYTHONPATH=. python -c "import rockfix; print('rockfix', rockfix.__version__)"
+        run: cd .. && python -c "import rockfix; print('rockfix', rockfix.__version__)"
 
   push_to_registry:
     name: Push Docker image to Docker Hub
