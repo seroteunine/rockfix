@@ -24,7 +24,7 @@ Supported formats: FLAC and MP3.
 ### Docker (no setup required)
 
 ```bash
-docker run --rm -it -v /path/to/music:/music seroteunin/rockfix:latest
+docker run --rm -v /path/to/music:/music seroteunin/rockfix:latest
 ```
 
 `/path/to/music` can be your mounted device (e.g. `/Volumes/PLAYER`) or any local folder.
