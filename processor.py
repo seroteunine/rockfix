@@ -18,18 +18,20 @@ def process_directory(root_dir: str, conversions: dict):
     """
     for root, _, files in os.walk(root_dir):
         print(f"\n{root}")
-        
-        for file in files:
-            # Skip system files
-            if any(file.startswith(pattern) for pattern in SKIP_PATTERNS):
-                continue
-            
-            # Process audio files
+
+        clean_files = [f for f in files if not any(f.startswith(p) for p in SKIP_PATTERNS)]
+        flac_files = [os.path.join(root, f) for f in clean_files if f.lower().endswith('.flac')]
+
+        # Fix ALBUMARTIST for the whole album directory at once so every track
+        # ends up with the same value, regardless of per-track artist ordering
+        if conversions['tags'] and flac_files:
+            audio.fix_album_albumartists(flac_files)
+
+        for file in clean_files:
+            # Downsample high-res FLAC files
             if conversions['music'] and file.lower().endswith('.flac'):
-                file_path = os.path.join(root, file)
-                audio.process_flac(file_path)
-            
+                audio.process_flac(os.path.join(root, file))
+
             # Process artwork files
             elif conversions['art'] and artwork.is_artwork_file(file):
-                file_path = os.path.join(root, file)
-                artwork.process_artwork(file_path)
+                artwork.process_artwork(os.path.join(root, file))

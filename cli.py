@@ -5,9 +5,9 @@ import os
 
 def get_conversion_options() -> dict:
     """Prompt for conversion options with default.
-    
+
     Returns:
-        dict: Dictionary with 'music' and 'art' boolean keys
+        dict: Dictionary with 'music', 'art', and 'tags' boolean keys
     """
     print("\n" + "─" * 50)
     print("⚙️  WHAT TO CONVERT")
@@ -19,25 +19,29 @@ def get_conversion_options() -> dict:
     print("  2️⃣  Convert cover art only")
     print("      • Optimizes album artwork (max 300x300)")
     print()
-    print("  3️⃣  Both (RECOMMENDED) ← if you're unsure, pick this!")
+    print("  3️⃣  Fix featured artist tags only")
+    print("      • Sets ALBUMARTIST so albums don't split by featured artist")
     print()
-    print("Choice [or press ENTER for option 3]: ", end="", flush=True)
+    print("  4️⃣  All (RECOMMENDED) ← if you're unsure, pick this!")
+    print()
+    print("Choice [or press ENTER for option 4]: ", end="", flush=True)
     user_input = input().strip()
-    
+
     options = {
-        "1": {"music": True, "art": False},
-        "2": {"music": False, "art": True},
-        "3": {"music": True, "art": True},
+        "1": {"music": True,  "art": False, "tags": False},
+        "2": {"music": False, "art": True,  "tags": False},
+        "3": {"music": False, "art": False, "tags": True},
+        "4": {"music": True,  "art": True,  "tags": True},
     }
-    
+
     if not user_input:
-        return options["3"]
-    
+        return options["4"]
+
     if user_input in options:
         return options[user_input]
     else:
-        print("Invalid choice. Using default (both).")
-        return options["3"]
+        print("Invalid choice. Using default (all).")
+        return options["4"]
 
 
 def print_header():
@@ -50,19 +54,21 @@ def print_header():
 
 def print_summary(root_dir: str, conversions: dict):
     """Print processing summary.
-    
+
     Args:
         root_dir: The root directory being processed
-        conversions: Dictionary with conversion options
+        conversions: Dictionary with 'music', 'art', and 'tags' boolean keys
     """
-    conversion_str = ""
-    if conversions["music"] and conversions["art"]:
-        conversion_str = "Music files & Cover art"
-    elif conversions["music"]:
-        conversion_str = "Music files"
-    else:
-        conversion_str = "Cover art"
-    
+    parts = []
+    if conversions["music"]:
+        parts.append("Music files")
+    if conversions["art"]:
+        parts.append("Cover art")
+    if conversions["tags"]:
+        parts.append("Featured artist tags")
+
+    conversion_str = " & ".join(parts) if parts else "Nothing selected"
+
     print("\n" + "─" * 50)
     print("✓ READY TO CONVERT")
     print("─" * 50)
