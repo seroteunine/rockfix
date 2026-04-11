@@ -5,16 +5,18 @@ import subprocess
 from mutagen.flac import FLAC
 
 
-def process(file_path: str):
+def process(file_path: str) -> bool:
     """Downsample a FLAC file to 48 kHz if it exceeds the Rockbox limit."""
     try:
         f = FLAC(file_path)
         if f.info.sample_rate <= 48000:
-            return
+            return False
         print(f"  Converting {os.path.basename(file_path)} ({f.info.sample_rate} Hz → 48000 Hz)...")
         _downsample(file_path)
+        return True
     except Exception as e:
         print(f"  Error reading {os.path.basename(file_path)}: {e}")
+        return False
 
 
 def _downsample(file_path: str):

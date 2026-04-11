@@ -41,7 +41,7 @@ def _to_baseline_jpeg(data: bytes) -> bytes:
     return buf.getvalue()
 
 
-def process(file_path: str):
+def process(file_path: str) -> bool:
     """Resize/convert a standalone artwork file for Rockbox compatibility.
 
     PNG files are converted to JPEG — Rockbox does not support PNG.
@@ -59,24 +59,29 @@ def process(file_path: str):
                     # A JPEG already exists for this cover — just remove the PNG.
                     os.remove(file_path)
                     print(f"  Removed {os.path.basename(file_path)} (cover.jpg already present)")
-                    return
+                    return True
                 print(f"  Converting {os.path.basename(file_path)} (PNG → JPEG, Rockbox does not support PNG)...")
                 out = img.convert("RGB")
                 out.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
                 out.save(jpg_path, "JPEG", quality=85, progressive=False)
                 os.remove(file_path)
+                return True
 
             elif w > MAX_SIZE or h > MAX_SIZE:
                 print(f"  Resizing {os.path.basename(file_path)} ({w}x{h} → {MAX_SIZE}x{MAX_SIZE})...")
                 out = img.convert("RGB")
                 out.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
                 out.save(file_path, "JPEG", quality=85, progressive=False)
+                return True
+
+            return False
 
     except Exception as e:
         print(f"  Error processing {os.path.basename(file_path)}: {e}")
+        return False
 
 
-def process_embedded_flac(file_path: str):
+def process_embedded_flac(file_path: str) -> bool:
     """Extract embedded art from a FLAC file to cover.jpg in the same directory.
 
     Rockbox does not read embedded FLAC (Vorbis comment) art — it only displays
@@ -85,21 +90,23 @@ def process_embedded_flac(file_path: str):
     """
     directory = os.path.dirname(file_path)
     if any(os.path.exists(os.path.join(directory, n)) for n in KNOWN_FILENAMES):
-        return
+        return False
     try:
         f = FLAC(file_path)
         if not f.pictures:
-            return
+            return False
         cover_path = os.path.join(directory, "cover.jpg")
         jpg_data = _to_baseline_jpeg(f.pictures[0].data)
         with open(cover_path, "wb") as out:
             out.write(jpg_data)
         print(f"  Extracted embedded art → cover.jpg  ({os.path.basename(file_path)})")
+        return True
     except Exception as e:
         print(f"  Error extracting embedded art from {os.path.basename(file_path)}: {e}")
+        return False
 
 
-def process_embedded_mp3(file_path: str):
+def process_embedded_mp3(file_path: str) -> bool:
     """Resize embedded artwork in an MP3 file.
 
     Rockbox reads embedded JPEG art from ID3v2 tags. Oversized images are
@@ -108,7 +115,7 @@ def process_embedded_mp3(file_path: str):
     try:
         f = MP3(file_path, ID3=ID3)
         if not f.tags:
-            return
+            return False
         changed = False
         for apic in f.tags.getall("APIC"):
             img = Image.open(io.BytesIO(apic.data))
@@ -121,5 +128,7 @@ def process_embedded_mp3(file_path: str):
             changed = True
         if changed:
             f.tags.save(file_path)
+        return changed
     except Exception as e:
         print(f"  Error processing embedded art in {os.path.basename(file_path)}: {e}")
+        return False

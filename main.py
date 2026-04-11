@@ -6,6 +6,7 @@ import signal
 import sys
 import tempfile
 
+from . import __version__
 from . import audio
 from . import artwork
 from . import tags
@@ -88,9 +89,13 @@ def _process(root_dir: str):
     signal.signal(signal.SIGTERM, _handle_interrupt)
 
     try:
+        print(f"rockfix {__version__}")
         print(f"\nFolder:  {root_dir}")
         print(f"Staging: {_staging.tmp}")
         print("─" * 50)
+
+        changed: set[str] = set()
+        scanned = 0
 
         for root, _, files in os.walk(root_dir):
             print(f"\n{root}")
@@ -110,23 +115,28 @@ def _process(root_dir: str):
                     _staging.stage(os.path.join(root, f))
 
             if flacs or mp3s:
-                tags.fix_album_artist(flacs + mp3s)
+                changed.update(tags.fix_album_artist(flacs + mp3s))
 
             for f in clean:
                 staged = _staging.tmp_path(os.path.join(root, f))
                 if f.lower().endswith('.flac'):
-                    audio.process(staged)
-                    artwork.process_embedded_flac(staged)
+                    scanned += 1
+                    if audio.process(staged):               changed.add(staged)
+                    if artwork.process_embedded_flac(staged): changed.add(staged)
                 elif f.lower().endswith('.mp3'):
-                    tags.fix_mp3_id3_version(staged)
-                    artwork.process_embedded_mp3(staged)
+                    scanned += 1
+                    if tags.fix_mp3_id3_version(staged):    changed.add(staged)
+                    if artwork.process_embedded_mp3(staged): changed.add(staged)
                 elif artwork.is_artwork(f):
-                    artwork.process(staged)
+                    scanned += 1
+                    if artwork.process(staged):             changed.add(staged)
 
+        n_changed = len(changed)
+        n_ok = scanned - n_changed
         print("\n" + "─" * 50)
         print("Applying changes to device...")
-        written = _staging.apply()
-        print(f"{written} file(s) updated.")
+        _staging.apply()
+        print(f"{n_changed} modified, {n_ok} already OK.")
 
     finally:
         _staging.cleanup()

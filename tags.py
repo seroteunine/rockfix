@@ -54,7 +54,7 @@ def _set_albumartist(f, path: str, value: str):
         f.tags.save(path)
 
 
-def fix_mp3_id3_version(path: str):
+def fix_mp3_id3_version(path: str) -> bool:
     """Convert MP3 ID3 tags to v2.3 for Rockbox compatibility.
 
     Rockbox has known parser bugs with certain ID3v2.4 features that cause
@@ -62,23 +62,28 @@ def fix_mp3_id3_version(path: str):
     """
     try:
         f = ID3(path)
+        if f.version[1] == 3:
+            return False
         f.update_to_v23()
         f.save(path, v2_version=3)
         print(f"  ID3v2.3  {os.path.basename(path)}")
+        return True
     except Exception as e:
         print(f"  Error converting ID3 version for {os.path.basename(path)}: {e}")
+        return False
 
 
 VARIOUS_ARTISTS = "Various Artists"
 
 
-def fix_album_artist(audio_files: list[str]):
+def fix_album_artist(audio_files: list[str]) -> set[str]:
     """Set a consistent ALBUMARTIST on every track in an album directory.
 
     If a single artist appears on more than 50% of the tracks, that artist
     is used as ALBUMARTIST. Otherwise the directory is treated as a
     compilation and ALBUMARTIST is set to "Various Artists".
     Supports both FLAC (Vorbis comments) and MP3 (ID3) files.
+    Returns the set of paths that were modified.
     """
     loaded = []
     tally = Counter()
@@ -95,7 +100,7 @@ def fix_album_artist(audio_files: list[str]):
             print(f"  Error reading {os.path.basename(path)}: {e}")
 
     if not tally:
-        return
+        return set()
 
     top_artist, top_count = tally.most_common(1)[0]
     if top_count / len(loaded) >= 0.5:
@@ -103,7 +108,10 @@ def fix_album_artist(audio_files: list[str]):
     else:
         album_artist = VARIOUS_ARTISTS
 
+    modified = set()
     for path, f in loaded:
         if _get_albumartist(f) != album_artist:
             print(f"  Tagging  {os.path.basename(path)}: ALBUMARTIST={album_artist!r}")
             _set_albumartist(f, path, album_artist)
+            modified.add(path)
+    return modified
