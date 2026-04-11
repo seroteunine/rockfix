@@ -55,9 +55,10 @@ def _process(root_dir: str, conversions: dict):
 
         clean = [f for f in files if not any(f.startswith(p) for p in SKIP_PREFIXES)]
         flacs = [os.path.join(root, f) for f in clean if f.lower().endswith('.flac')]
+        mp3s  = [os.path.join(root, f) for f in clean if f.lower().endswith('.mp3')]
 
-        if conversions['tags'] and flacs:
-            tags.fix_album_artist(flacs)
+        if conversions['tags'] and (flacs or mp3s):
+            tags.fix_album_artist(flacs + mp3s)
 
         for f in clean:
             path = os.path.join(root, f)
@@ -66,6 +67,9 @@ def _process(root_dir: str, conversions: dict):
                     audio.process(path)
                 if conversions['art']:
                     artwork.process_embedded_flac(path)
+            elif f.lower().endswith('.mp3'):
+                if conversions['art']:
+                    artwork.process_embedded_mp3(path)
             elif conversions['art'] and artwork.is_artwork(f):
                 artwork.process(path)
 
