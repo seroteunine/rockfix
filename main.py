@@ -45,29 +45,22 @@ class _Staging:
         self._staged.append(real_path)
         return staged
 
-    def apply(self) -> int:
-        """Copy all staged files back to the source. Returns the number of files written.
+    def apply(self, changed: set[str]):
+        """Copy only changed staged files back to the source.
 
-        Copies every file in the staging area (new or modified).
         Files that were staged but no longer exist (e.g. PNG removed after PNG→JPEG
         conversion) are deleted from the real path.
         """
-        written = 0
-
-        for root, _, files in os.walk(self.tmp):
-            for f in files:
-                staged = os.path.join(root, f)
+        for staged in changed:
+            if os.path.exists(staged):
                 real = self.real_path(staged)
                 os.makedirs(os.path.dirname(real), exist_ok=True)
                 shutil.copy2(staged, real)
-                written += 1
 
         for real_path in self._staged:
             staged_path = self.tmp_path(real_path)
             if not os.path.exists(staged_path) and os.path.exists(real_path):
                 os.remove(real_path)
-
-        return written
 
     def cleanup(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -96,8 +89,6 @@ def _process(root_dir: str):
         scanned = 0
 
         for root, _, files in os.walk(root_dir):
-            print(f"\n{root}")
-
             clean = [f for f in files if not any(f.startswith(p) for p in SKIP_PREFIXES)]
 
             # Copy all audio files and existing cover art into the staging area.
@@ -112,28 +103,41 @@ def _process(root_dir: str):
                 if artwork.is_artwork(f):
                     _staging.stage(os.path.join(root, f))
 
+            if not (flacs or mp3s or any(artwork.is_artwork(f) for f in clean)):
+                continue
+
+            album_changed: set[str] = set()
+            album_scanned = 0
+
             if flacs or mp3s:
-                changed.update(tags.fix_album_artist(flacs + mp3s))
+                album_changed.update(tags.fix_album_artist(flacs + mp3s))
 
             for f in clean:
                 staged = _staging.tmp_path(os.path.join(root, f))
                 if f.lower().endswith('.flac'):
-                    scanned += 1
-                    if audio.process(staged):               changed.add(staged)
-                    if artwork.process_embedded_flac(staged): changed.add(staged)
+                    album_scanned += 1
+                    if audio.process(staged):                album_changed.add(staged)
+                    if artwork.process_embedded_flac(staged): album_changed.add(staged)
                 elif f.lower().endswith('.mp3'):
-                    scanned += 1
-                    if tags.fix_mp3_id3_version(staged):    changed.add(staged)
-                    if artwork.process_embedded_mp3(staged): changed.add(staged)
+                    album_scanned += 1
+                    if tags.fix_mp3_id3_version(staged):     album_changed.add(staged)
+                    if artwork.process_embedded_mp3(staged):  album_changed.add(staged)
                 elif artwork.is_artwork(f):
-                    scanned += 1
-                    if artwork.process(staged):             changed.add(staged)
+                    album_scanned += 1
+                    if artwork.process(staged):              album_changed.add(staged)
+
+            n_album_changed = len(album_changed)
+            status = f"{n_album_changed} modified" if n_album_changed else "OK"
+            print(f"{root}  [{status}]")
+
+            changed.update(album_changed)
+            scanned += album_scanned
 
         n_changed = len(changed)
         n_ok = scanned - n_changed
         print("\n" + "─" * 50)
         print("Applying changes to device...")
-        _staging.apply()
+        _staging.apply(changed)
         print(f"{n_changed} modified, {n_ok} already OK.")
 
     finally:
